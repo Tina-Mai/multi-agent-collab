@@ -47,12 +47,12 @@ export default function Messages() {
 						<div key={message.id} className={`flex items-end gap-3 ${isUser ? "flex-row-reverse" : "flex-row"}`}>
 							{/* Profile picture for non-user messages */}
 							{!isUser && (
-								<div className="size-6 rounded-full overflow-hidden flex-shrink-0">
+								<div className="size-6 rounded-full overflow-hidden flex-shrink-0 max-w-96">
 									<Image src={AGENT_AVATARS[message.sender as Exclude<Sender, "user">]} alt={message.sender} width={32} height={32} priority />
 								</div>
 							)}
 
-							<div className="vertical pt-3">
+							<div className="vertical pt-3 max-w-96">
 								{/* Sender name for non-user messages */}
 								{!isUser && <span className="text-xs text-gray-500 mb-1 ml-2 capitalize">{message.sender}</span>}
 

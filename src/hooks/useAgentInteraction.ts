@@ -1,16 +1,24 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useGlobalContext, createMessage, type Sender } from "@/context/globalContext";
 
 const AGENT_ORDER: Exclude<Sender, "user">[] = ["researcher", "assembler", "critic"];
+const MAX_TURNS = 5; // Maximum number of turns per agent to prevent infinite loops
 
 export function useAgentInteraction() {
 	const { messages, setMessages, goal, setCurrentStage } = useGlobalContext();
 	const [currentAgentIndex, setCurrentAgentIndex] = useState(0);
 	const [isProcessing, setIsProcessing] = useState(false);
+	const [turnCount, setTurnCount] = useState(0);
 
-	const processNextAgent = async () => {
+	const processNextAgent = useCallback(async () => {
 		if (isProcessing || !goal) {
 			console.log("Skipping process - Processing:", isProcessing, "Goal:", goal);
+			return;
+		}
+
+		if (turnCount >= MAX_TURNS) {
+			console.log("Maximum turns reached, ending conversation");
+			setCurrentStage("complete");
 			return;
 		}
 
@@ -43,22 +51,27 @@ export function useAgentInteraction() {
 			// Add all new messages to the conversation
 			setMessages([...messages, ...data.messages]);
 
-			// Move to next agent or complete the interaction
-			if (currentAgentIndex < AGENT_ORDER.length - 1) {
-				setCurrentAgentIndex(currentAgentIndex + 1);
-			} else {
+			// Move to next agent
+			setCurrentAgentIndex((prevIndex) => (prevIndex + 1) % AGENT_ORDER.length);
+
+			// Increment turn count when we complete a full cycle
+			if (currentAgentIndex === AGENT_ORDER.length - 1) {
+				setTurnCount((prev) => prev + 1);
+			}
+
+			// Check if we should end the conversation
+			const lastMessage = data.messages[data.messages.length - 1]?.content.toLowerCase();
+			if (lastMessage?.includes("that concludes") || lastMessage?.includes("we're done") || lastMessage?.includes("looks good") || turnCount >= MAX_TURNS - 1) {
 				setCurrentStage("complete");
-				setCurrentAgentIndex(0); // Reset for next interaction
 			}
 		} catch (error) {
 			console.error("Agent processing error:", error);
 			setMessages([...messages, createMessage("Sorry, I encountered an error processing your request.", "critic")]);
 			setCurrentStage("complete");
-			setCurrentAgentIndex(0); // Reset for next interaction
 		} finally {
 			setIsProcessing(false);
 		}
-	};
+	}, [currentAgentIndex, goal, isProcessing, messages, setCurrentStage, setMessages, turnCount]);
 
 	return {
 		processNextAgent,
