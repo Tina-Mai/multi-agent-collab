@@ -5,9 +5,18 @@ const openai = new OpenAI({
 });
 
 export async function generate(systemPrompt: string, userPrompt: string): Promise<string[]> {
+	if (!process.env.OPENAI_API_KEY) {
+		throw new Error("OpenAI API key is not configured");
+	}
+
 	try {
+		console.log("Calling OpenAI API with:", {
+			systemPrompt: systemPrompt.slice(0, 100) + "...",
+			userPrompt: userPrompt.slice(0, 100) + "...",
+		});
+
 		const response = await openai.chat.completions.create({
-			model: "gpt-4o-mini",
+			model: "gpt-4",
 			messages: [
 				{
 					role: "system",
@@ -15,14 +24,19 @@ export async function generate(systemPrompt: string, userPrompt: string): Promis
 				},
 				{ role: "user", content: userPrompt },
 			],
-			temperature: 0.8, // temperature for creativity control
-			n: 1, // number of completions to generate
+			temperature: 0.7,
+			max_tokens: 1000,
+			n: 1,
 		});
 
-		const content = response.choices[0].message.content || "No response generated.";
+		if (!response.choices[0].message?.content) {
+			throw new Error("No content in OpenAI response");
+		}
+
+		const content = response.choices[0].message.content;
 		return content.split("\n\n").filter((paragraph) => paragraph.trim() !== "");
 	} catch (error) {
-		console.error("Error calling OpenAI API:", error);
-		throw new Error("Failed to generate");
+		console.error("OpenAI API Error:", error);
+		throw error;
 	}
 }

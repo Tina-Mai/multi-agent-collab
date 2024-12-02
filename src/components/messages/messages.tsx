@@ -3,26 +3,37 @@
 import { useGlobalContext, type Sender } from "@/context/globalContext";
 import { useEffect, useRef } from "react";
 import Image from "next/image";
-
-// Profile images for each sender type
-const profileImages: Record<Exclude<Sender, "user">, string> = {
-	researcher: "/researcher-avatar.png",
-	assembler: "/assembler-avatar.png",
-	critic: "/critic-avatar.png",
-};
+import { useAgentInteraction } from "@/hooks/useAgentInteraction";
+import { AGENT_AVATARS } from "./constants";
 
 export default function Messages() {
-	const { messages } = useGlobalContext();
+	const { messages, setGoal, currentStage, setCurrentStage } = useGlobalContext();
 	const messagesEndRef = useRef<HTMLDivElement>(null);
+	const { processNextAgent, isProcessing } = useAgentInteraction();
 
 	// Scroll to bottom when messages change
 	useEffect(() => {
 		messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
 	}, [messages]);
 
+	// Start agent interaction when a new user message is added
 	useEffect(() => {
-		console.log("Messages state updated:", messages);
-	}, [messages]);
+		const lastMessage = messages[messages.length - 1];
+
+		if (lastMessage?.sender === "user") {
+			console.log("Setting goal:", lastMessage.content);
+			setGoal(lastMessage.content);
+			setCurrentStage("simulating");
+		}
+	}, [messages, setGoal, setCurrentStage]);
+
+	// Process next agent when in simulation stage
+	useEffect(() => {
+		console.log("Stage:", currentStage, "Processing:", isProcessing);
+		if (currentStage === "simulating" && !isProcessing) {
+			processNextAgent();
+		}
+	}, [currentStage, isProcessing, processNextAgent]);
 
 	return (
 		<div className="vertical h-full overflow-y-auto p-4 gap-4 justify-end">
@@ -31,17 +42,17 @@ export default function Messages() {
 				const isUser = message.sender === "user";
 
 				return (
-					<div key={message.id} className={`flex items-end gap-2 ${isUser ? "flex-row-reverse" : "flex-row"}`}>
+					<div key={message.id} className={`flex items-end gap-3 ${isUser ? "flex-row-reverse" : "flex-row"}`}>
 						{/* Profile picture for non-user messages */}
 						{!isUser && (
-							<div className="w-8 h-8 rounded-full overflow-hidden flex-shrink-0">
-								<Image src={profileImages[message.sender as Exclude<Sender, "user">]} alt={message.sender} width={32} height={32} />
+							<div className="size-6 rounded-full overflow-hidden flex-shrink-0">
+								<Image src={AGENT_AVATARS[message.sender as Exclude<Sender, "user">]} alt={message.sender} width={32} height={32} priority />
 							</div>
 						)}
 
 						<div className="vertical">
 							{/* Sender name for non-user messages */}
-							{!isUser && <span className="text-sm text-gray-500 mb-1 capitalize">{message.sender}</span>}
+							{!isUser && <span className="text-xs text-gray-500 mb-1 ml-2 capitalize">{message.sender}</span>}
 
 							{/* Message bubble */}
 							<div
