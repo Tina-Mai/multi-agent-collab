@@ -6,6 +6,14 @@ import Image from "next/image";
 import { useAgentInteraction } from "@/hooks/useAgentInteraction";
 import { AGENT_AVATARS } from "./constants";
 
+function DoneMessage() {
+	return (
+		<div className="flex items-center justify-center py-4 text-sm text-gray-500">
+			<span className="px-3 py-1 bg-green-100 text-green-800 rounded-full">✓ Solution Complete</span>
+		</div>
+	);
+}
+
 export default function Messages() {
 	const { messages, setGoal, currentStage, setCurrentStage } = useGlobalContext();
 	const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -77,6 +85,7 @@ export default function Messages() {
 						</div>
 					);
 				})}
+				{currentStage === "complete" && <DoneMessage />}
 				<div ref={messagesEndRef} className="h-16" />
 			</div>
 		</div>

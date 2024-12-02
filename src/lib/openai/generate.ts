@@ -9,14 +9,15 @@ export async function* generateStream(systemPrompt: string, userPrompt: string) 
 		throw new Error("OpenAI API key is not configured");
 	}
 
+	const MAX_MESSAGES_PER_TURN = 5;
+	const MIN_MESSAGE_LENGTH = 20;
+	let messageCount = 0;
 	const randomDelay = () => new Promise((resolve) => setTimeout(resolve, Math.random() * 1000));
 
-	try {
-		console.log("Calling OpenAI API with:", {
-			systemPrompt: systemPrompt.slice(0, 100) + "...",
-			userPrompt: userPrompt.slice(0, 100) + "...",
-		});
+	// Check if this is the critic agent
+	const isCritic = systemPrompt.includes("You are a casual, friendly Critic");
 
+	try {
 		const stream = await openai.chat.completions.create({
 			model: "gpt-4",
 			messages: [
@@ -29,46 +30,26 @@ export async function* generateStream(systemPrompt: string, userPrompt: string) 
 		});
 
 		let currentMessage = "";
-		let isInCodeBlock = false;
-		let codeBlock = "";
 
 		for await (const chunk of stream) {
+			// Only apply message limit for non-critic agents
+			if (!isCritic && messageCount >= MAX_MESSAGES_PER_TURN) break;
+
 			const content = chunk.choices[0]?.delta?.content || "";
-
-			// Check for code block markers
-			if (content.includes("```")) {
-				isInCodeBlock = !isInCodeBlock;
-				if (!isInCodeBlock && codeBlock) {
-					// End of code block, yield it as a complete message
-					await randomDelay();
-					yield codeBlock.trim();
-					codeBlock = "";
-					continue;
-				}
-			}
-
-			if (isInCodeBlock) {
-				codeBlock += content;
-				continue;
-			}
-
 			currentMessage += content;
 
 			if (content.includes("\n") || content.includes(".") || content.includes("?")) {
-				if (currentMessage.trim()) {
+				if (currentMessage.trim().length >= MIN_MESSAGE_LENGTH) {
 					await randomDelay();
 					yield currentMessage.trim();
 					currentMessage = "";
+					messageCount++;
 				}
 			}
 		}
 
-		// Yield any remaining content
-		if (codeBlock.trim()) {
-			await randomDelay();
-			yield codeBlock.trim();
-		}
-		if (currentMessage.trim()) {
+		// Yield any remaining content as the last message
+		if (currentMessage.trim().length >= MIN_MESSAGE_LENGTH && (isCritic || messageCount < MAX_MESSAGES_PER_TURN)) {
 			await randomDelay();
 			yield currentMessage.trim();
 		}

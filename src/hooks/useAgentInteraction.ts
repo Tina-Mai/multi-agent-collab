@@ -1,14 +1,41 @@
 import { useState, useCallback } from "react";
-import { useGlobalContext, createMessage, type Sender, type Message } from "@/context/globalContext";
+import { useGlobalContext, createMessage, type Sender, type Message, MAX_MESSAGES } from "@/context/globalContext";
 
 const AGENT_ORDER: Exclude<Sender, "user">[] = ["researcher", "assembler", "critic"];
 const MAX_TURNS = 5;
 
 export function useAgentInteraction() {
-	const { messages, setMessages, goal, setCurrentStage } = useGlobalContext();
+	const { messages, setMessages, goal, currentStage, setCurrentStage } = useGlobalContext();
 	const [currentAgentIndex, setCurrentAgentIndex] = useState(0);
 	const [isProcessing, setIsProcessing] = useState(false);
 	const [turnCount, setTurnCount] = useState(0);
+
+	const shouldEndConversation = useCallback(
+		(message: string, messageCount: number) => {
+			if (messageCount < 15 || turnCount < 2) return false;
+
+			const completionPhrases = ["we've reached a good solution"];
+			const questionPhrases = ["what do you think about the current solution", "any concerns"];
+			const agreementPhrases = ["looks good to me", "i agree", "i'm satisfied", "no concerns"];
+			const feedbackPhrases = ["should", "could you", "try to", "consider", "what about", "how about"];
+
+			const lastFewMessages = messages.slice(-5);
+
+			if (feedbackPhrases.some((phrase) => message.toLowerCase().includes(phrase))) {
+				return false;
+			}
+
+			const hasAskedForOpinions = lastFewMessages.some((msg) => msg.sender === "critic" && questionPhrases.every((phrase) => msg.content.toLowerCase().includes(phrase)));
+
+			const hasAgreements =
+				hasAskedForOpinions &&
+				lastFewMessages.some((msg) => msg.sender === "researcher" && agreementPhrases.some((phrase) => msg.content.toLowerCase().includes(phrase))) &&
+				lastFewMessages.some((msg) => msg.sender === "assembler" && agreementPhrases.some((phrase) => msg.content.toLowerCase().includes(phrase)));
+
+			return messageCount >= MAX_MESSAGES || (hasAgreements && completionPhrases.some((phrase) => message.toLowerCase().includes(phrase)));
+		},
+		[messages, turnCount]
+	);
 
 	const processNextAgent = useCallback(async () => {
 		if (isProcessing || !goal) {
@@ -66,6 +93,11 @@ export function useAgentInteraction() {
 							const message = JSON.parse(data) as Message;
 							receivedMessages.push(message);
 							setMessages((prev: Message[]) => [...prev, message]);
+
+							if (message.sender === "critic" && shouldEndConversation(message.content, messages.length + receivedMessages.length)) {
+								setCurrentStage("complete");
+								return;
+							}
 						} catch (e) {
 							console.error("Error parsing message:", e);
 						}
@@ -73,18 +105,12 @@ export function useAgentInteraction() {
 				}
 			}
 
-			// Move to next agent
-			setCurrentAgentIndex((prevIndex) => (prevIndex + 1) % AGENT_ORDER.length);
+			if (currentStage !== "complete") {
+				setCurrentAgentIndex((prevIndex) => (prevIndex + 1) % AGENT_ORDER.length);
 
-			// Increment turn count when we complete a full cycle
-			if (currentAgentIndex === AGENT_ORDER.length - 1) {
-				setTurnCount((prev) => prev + 1);
-			}
-
-			// Check if we should end the conversation
-			const lastMessage = receivedMessages[receivedMessages.length - 1]?.content.toLowerCase();
-			if (lastMessage?.includes("that concludes") || lastMessage?.includes("we're done") || lastMessage?.includes("looks good") || turnCount >= MAX_TURNS - 1) {
-				setCurrentStage("complete");
+				if (currentAgentIndex === AGENT_ORDER.length - 1) {
+					setTurnCount((prev) => prev + 1);
+				}
 			}
 		} catch (error) {
 			console.error("Agent processing error:", error);
@@ -93,7 +119,7 @@ export function useAgentInteraction() {
 		} finally {
 			setIsProcessing(false);
 		}
-	}, [currentAgentIndex, goal, isProcessing, messages, setCurrentStage, setMessages, turnCount]);
+	}, [currentStage, currentAgentIndex, goal, isProcessing, messages, setCurrentStage, setMessages, shouldEndConversation, turnCount]);
 
 	return {
 		processNextAgent,

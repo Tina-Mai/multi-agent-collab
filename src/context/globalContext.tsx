@@ -58,3 +58,5 @@ export function createMessage(content: string, sender: Sender): Message {
 		timestamp: new Date(),
 	};
 }
+
+export const MAX_MESSAGES = 50;
