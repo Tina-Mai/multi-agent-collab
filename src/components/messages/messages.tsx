@@ -110,7 +110,6 @@ export default function Messages() {
 						</div>
 					);
 				})}
-				<DoneMessage />
 				{currentStage === "complete" && <DoneMessage />}
 				<div ref={messagesEndRef} className="h-16" />
 			</div>
