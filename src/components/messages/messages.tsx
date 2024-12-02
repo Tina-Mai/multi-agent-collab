@@ -61,7 +61,17 @@ export default function Messages() {
 									className={`relative px-3 py-1 rounded-xl text-sm
 										${isUser ? "bg-blue-500 text-white rounded-br-none" : "bg-gray-200 text-black rounded-bl-none"}`}
 								>
-									<p className="whitespace-pre-wrap break-words">{message.content}</p>
+									<p className="whitespace-pre-wrap break-words">
+										{message.content.split(" ").map((word, index) =>
+											word.startsWith("@") ? (
+												<span key={index} className="text-blue-500 font-bold">
+													{word}{" "}
+												</span>
+											) : (
+												word + " "
+											)
+										)}
+									</p>
 								</div>
 							</div>
 						</div>

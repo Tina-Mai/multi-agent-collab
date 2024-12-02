@@ -14,7 +14,7 @@ export interface Message {
 
 interface ContextValue {
 	messages: Message[];
-	setMessages: (messages: Message[]) => void;
+	setMessages: React.Dispatch<React.SetStateAction<Message[]>>;
 	currentStage: Stage;
 	setCurrentStage: (stage: Stage) => void;
 	goal: string;

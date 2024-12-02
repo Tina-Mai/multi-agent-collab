@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
-import { generate } from "@/lib/openai/generate";
+import { generateStream } from "@/lib/openai/generate";
 import { Sender, Message } from "@/context/globalContext";
+
+async function delay(ms: number) {
+	return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
 function createServerMessage(content: string, sender: Exclude<Sender, "user">): Message {
 	return {
@@ -13,38 +17,39 @@ function createServerMessage(content: string, sender: Exclude<Sender, "user">): 
 
 // System prompts for each agent
 const AGENT_PROMPTS: Record<Exclude<Sender, "user">, string> = {
-	researcher: `You are a Research Agent in a collaborative AI system. Your role is to:
+	researcher: `You are a casual, friendly Researcher in an AI collaborative workspace group chat. Your role is to:
 	1. Analyze the user's request and identify key requirements
 	2. Break down complex problems into manageable parts
 	3. Pretend you're reading from documentation and share relevant information, concepts, and best practices
 	
 	Interact naturally with the Assembler and Critic agents. Ask questions if you need clarification.
-	Keep your messages conversational and focused. Use multiple messages if needed.
+	Keep your messages conversational and focused. Use multiple messages if needed. DON'T WRITE CHUNKS OF CODE, JUST EXPLAIN WHAT YOU'RE DOING. DO NOT WRITE MARKDOWN, JUST PLAIN TEXT.
 	
 	Example interaction:
-	"I'll look into the key requirements for this. From what I can see..."
+	"Hey! I'll look into the key requirements for this. From what I can see..."
 	"@Assembler, here are the main concepts you'll need to consider..."`,
 
-	assembler: `You are an Assembly Agent in a collaborative AI system. Your role is to:
+	assembler: `You are a casual, friendly Assembler in an AI collaborative workspace group chat. Your role is to:
 	1. Take the Researcher's findings and create practical solutions
 	2. Write clear, implementable code when needed
 	3. Explain your reasoning and approach
 	
 	Actively collaborate with the Researcher for information and the Critic for feedback.
-	Break your responses into multiple messages for clarity.
+	Break your responses into multiple messages for clarity. DON'T WRITE CHUNKS OF CODE, JUST EXPLAIN WHAT YOU'RE DOING. DO NOT WRITE MARKDOWN, JUST PLAIN TEXT.
 	
 	Example interaction:
 	"Thanks @Researcher, I'll use that information to build a solution..."
 	"Here's my proposed implementation..."
 	"@Critic, what do you think about this approach?"`,
 
-	critic: `You are a Critic Agent in a collaborative AI system. Your role is to:
+	critic: `You are a casual, friendly Critic in an AI collaborative workspace group chat. Your role is to:
 	1. Review solutions for technical accuracy and completeness
 	2. Suggest specific improvements
 	3. Consider edge cases and potential issues
 	
 	Work closely with the Researcher and Assembler to refine solutions.
 	Don't just point out issues - suggest improvements and alternatives.
+    DON'T WRITE CHUNKS OF CODE, JUST EXPLAIN WHAT YOU'RE DOING. DO NOT WRITE MARKDOWN, JUST PLAIN TEXT.
 	
 	Example interaction:
 	"@Assembler, your solution looks good, but consider..."
@@ -89,20 +94,34 @@ Respond in a natural, conversational way. You can split your response into multi
 Address other agents directly using @ when appropriate.`;
 
 		const systemPrompt = AGENT_PROMPTS[currentAgent as Exclude<Sender, "user">];
-		const response = await generate(systemPrompt, roleContext);
 
-		if (!response) {
-			console.error("Empty response from OpenAI");
-			return NextResponse.json({ error: "Empty response from OpenAI" }, { status: 500 });
-		}
+		const encoder = new TextEncoder();
+		const stream = new ReadableStream({
+			async start(controller) {
+				try {
+					const messageGenerator = generateStream(systemPrompt, roleContext);
 
-		// Split response into separate messages, handling potential message markers
-		const messages = response
-			.split(/\n(?=(?:[^"]*"[^"]*")*[^"]*$)/) // Split on newlines while preserving quoted content
-			.filter((msg) => msg.trim())
-			.map((content) => createServerMessage(content, currentAgent as Exclude<Sender, "user">));
+					for await (const content of messageGenerator) {
+						const message = createServerMessage(content, currentAgent as Exclude<Sender, "user">);
+						controller.enqueue(encoder.encode(`data: ${JSON.stringify(message)}\n\n`));
+						await delay(500);
+					}
 
-		return NextResponse.json({ messages });
+					controller.enqueue(encoder.encode("data: [DONE]\n\n"));
+					controller.close();
+				} catch (error) {
+					controller.error(error);
+				}
+			},
+		});
+
+		return new Response(stream, {
+			headers: {
+				"Content-Type": "text/event-stream",
+				"Cache-Control": "no-cache",
+				Connection: "keep-alive",
+			},
+		});
 	} catch (error) {
 		console.error("Agent API Error:", error);
 		return NextResponse.json({ error: error instanceof Error ? error.message : "Unknown error occurred" }, { status: 500 });

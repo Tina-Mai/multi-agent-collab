@@ -1,8 +1,8 @@
 import { useState, useCallback } from "react";
-import { useGlobalContext, createMessage, type Sender } from "@/context/globalContext";
+import { useGlobalContext, createMessage, type Sender, type Message } from "@/context/globalContext";
 
 const AGENT_ORDER: Exclude<Sender, "user">[] = ["researcher", "assembler", "critic"];
-const MAX_TURNS = 5; // Maximum number of turns per agent to prevent infinite loops
+const MAX_TURNS = 5;
 
 export function useAgentInteraction() {
 	const { messages, setMessages, goal, setCurrentStage } = useGlobalContext();
@@ -42,14 +42,36 @@ export function useAgentInteraction() {
 				throw new Error(`HTTP error! status: ${response.status}`);
 			}
 
-			const data = await response.json();
-
-			if (data.error) {
-				throw new Error(data.error);
+			if (!response.body) {
+				throw new Error("No response body");
 			}
 
-			// Add all new messages to the conversation
-			setMessages([...messages, ...data.messages]);
+			const reader = response.body.getReader();
+			const decoder = new TextDecoder();
+			const receivedMessages: Message[] = [];
+
+			while (true) {
+				const { value, done } = await reader.read();
+				if (done) break;
+
+				const chunk = decoder.decode(value);
+				const lines = chunk.split("\n");
+
+				for (const line of lines) {
+					if (line.startsWith("data: ")) {
+						const data = line.slice(5);
+						if (data === "[DONE]") break;
+
+						try {
+							const message = JSON.parse(data) as Message;
+							receivedMessages.push(message);
+							setMessages((prev: Message[]) => [...prev, message]);
+						} catch (e) {
+							console.error("Error parsing message:", e);
+						}
+					}
+				}
+			}
 
 			// Move to next agent
 			setCurrentAgentIndex((prevIndex) => (prevIndex + 1) % AGENT_ORDER.length);
@@ -60,13 +82,13 @@ export function useAgentInteraction() {
 			}
 
 			// Check if we should end the conversation
-			const lastMessage = data.messages[data.messages.length - 1]?.content.toLowerCase();
+			const lastMessage = receivedMessages[receivedMessages.length - 1]?.content.toLowerCase();
 			if (lastMessage?.includes("that concludes") || lastMessage?.includes("we're done") || lastMessage?.includes("looks good") || turnCount >= MAX_TURNS - 1) {
 				setCurrentStage("complete");
 			}
 		} catch (error) {
 			console.error("Agent processing error:", error);
-			setMessages([...messages, createMessage("Sorry, I encountered an error processing your request.", "critic")]);
+			setMessages((prev) => [...prev, createMessage("Sorry, I encountered an error processing your request.", "critic")]);
 			setCurrentStage("complete");
 		} finally {
 			setIsProcessing(false);
