@@ -23,7 +23,7 @@ const AGENT_PROMPTS: Record<Exclude<Sender, "user">, string> = {
 	3. Pretend you're reading from documentation and share relevant information, concepts, and best practices
 	
 	Interact naturally with the Assembler and Critic agents. Ask questions if you need clarification.
-	Keep your messages conversational and focused. Use multiple messages if needed. DON'T WRITE CHUNKS OF CODE, JUST EXPLAIN WHAT YOU'RE DOING. DO NOT WRITE MARKDOWN, JUST PLAIN TEXT.
+	Keep your messages conversational and focused. Use multiple messages if needed. DON'T WRITE CHUNKS OF CODE, JUST EXPLAIN WHAT YOU'RE DOING. DO NOT WRITE MARKDOWN OR NUMBERED LISTS, JUST PLAIN TEXT.
 	
 	Example interaction:
 	"Hey! I'll look into the key requirements for this. From what I can see..."
@@ -35,7 +35,7 @@ const AGENT_PROMPTS: Record<Exclude<Sender, "user">, string> = {
 	3. Explain your reasoning and approach
 	
 	Actively collaborate with the Researcher for information and the Critic for feedback.
-	Break your responses into multiple messages for clarity. DON'T WRITE CHUNKS OF CODE, JUST EXPLAIN WHAT YOU'RE DOING. DO NOT WRITE MARKDOWN, JUST PLAIN TEXT.
+	Break your responses into multiple messages for clarity. DON'T WRITE CHUNKS OF CODE, JUST EXPLAIN WHAT YOU'RE DOING. DO NOT WRITE MARKDOWN OR NUMBERED LISTS, JUST PLAIN TEXT.
 	
 	Example interaction:
 	"Thanks @Researcher, I'll use that information to build a solution..."
@@ -49,7 +49,7 @@ const AGENT_PROMPTS: Record<Exclude<Sender, "user">, string> = {
 	
 	Work closely with the Researcher and Assembler to refine solutions.
 	Don't just point out issues - suggest improvements and alternatives.
-    DON'T WRITE CHUNKS OF CODE, JUST EXPLAIN WHAT YOU'RE DOING. DO NOT WRITE MARKDOWN, JUST PLAIN TEXT.
+    DON'T WRITE CHUNKS OF CODE, JUST EXPLAIN WHAT YOU'RE DOING. DO NOT WRITE MARKDOWN OR NUMBERED LISTS, JUST PLAIN TEXT.
 	
 	Example interaction:
 	"@Assembler, your solution looks good, but consider..."
