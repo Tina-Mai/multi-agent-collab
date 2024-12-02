@@ -36,8 +36,12 @@ export function useAgentInteraction() {
 
 			const data = await response.json();
 
-			// Add the new message to the conversation
-			setMessages([...messages, createMessage(data.response, currentAgent)]);
+			if (data.error) {
+				throw new Error(data.error);
+			}
+
+			// Add all new messages to the conversation
+			setMessages([...messages, ...data.messages]);
 
 			// Move to next agent or complete the interaction
 			if (currentAgentIndex < AGENT_ORDER.length - 1) {

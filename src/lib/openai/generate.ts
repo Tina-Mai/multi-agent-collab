@@ -4,7 +4,7 @@ const openai = new OpenAI({
 	apiKey: process.env.OPENAI_API_KEY,
 });
 
-export async function generate(systemPrompt: string, userPrompt: string): Promise<string[]> {
+export async function generate(systemPrompt: string, userPrompt: string): Promise<string> {
 	if (!process.env.OPENAI_API_KEY) {
 		throw new Error("OpenAI API key is not configured");
 	}
@@ -33,8 +33,7 @@ export async function generate(systemPrompt: string, userPrompt: string): Promis
 			throw new Error("No content in OpenAI response");
 		}
 
-		const content = response.choices[0].message.content;
-		return content.split("\n\n").filter((paragraph) => paragraph.trim() !== "");
+		return response.choices[0].message.content;
 	} catch (error) {
 		console.error("OpenAI API Error:", error);
 		throw error;
