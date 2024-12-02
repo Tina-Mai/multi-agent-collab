@@ -8,9 +8,34 @@ import { AGENT_AVATARS } from "./constants";
 
 function DoneMessage() {
 	return (
-		<div className="flex items-center justify-center py-4 text-sm text-gray-500">
-			<span className="px-3 py-1 bg-green-100 text-green-800 rounded-full">✓ Solution Complete</span>
-		</div>
+		<>
+			<div className={`flex items-end gap-3 flex-row`}>
+				{/* Profile picture for non-user messages */}
+				<div className="size-6 rounded-full overflow-hidden flex-shrink-0 max-w-96">
+					<Image src={"/critic-avatar.png"} alt={"Critic profile pic"} width={32} height={32} priority />
+				</div>
+
+				<div className="vertical pt-3 max-w-96">
+					{/* Sender name for non-user messages */}
+					<span className="text-xs text-gray-500 mb-1 ml-2 capitalize">Critic</span>
+
+					{/* Message bubble */}
+					<div className={`relative px-3 py-1 rounded-xl text-sm bg-[#E8E7EA] text-black`}>
+						<p className="whitespace-pre-wrap break-words">Here&apos;s the solution we&apos;ve reached!</p>
+					</div>
+					<div className={`relative horizontal px-4 py-2 rounded-xl text-sm bg-[#E8E7EA] text-black rounded-bl-none mt-0.5 items-center`}>
+						<Image src={"/file.png"} alt={"File icon"} width={50} height={50} />
+						<div className="vertical gap-0.5 mx-3">
+							<p className="font-semibold text-[13px]">Programmers_Guide.txt</p>
+							<p className="text-xs text-gray-500">Text Document · 6 KB</p>
+						</div>
+					</div>
+				</div>
+			</div>
+			<div className="flex items-center justify-center py-4 text-sm text-gray-500">
+				<span className="px-3 py-1 bg-green-100 text-green-800 rounded-full">✓ Solution Complete</span>
+			</div>
+		</>
 	);
 }
 
@@ -85,6 +110,7 @@ export default function Messages() {
 						</div>
 					);
 				})}
+				<DoneMessage />
 				{currentStage === "complete" && <DoneMessage />}
 				<div ref={messagesEndRef} className="h-16" />
 			</div>
