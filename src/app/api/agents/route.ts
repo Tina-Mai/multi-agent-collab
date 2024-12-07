@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { generateStream } from "@/lib/openai/generate";
 import { Sender, Message } from "@/context/globalContext";
+import { FLASK_DOCUMENTATION } from "@/data/flaskDocs";
+import { TAILWIND_DOCUMENTATION } from "@/data/tailwindDocs";
+import { HUGGINGFACE_DOCUMENTATION } from "@/data/huggingFaceDocs";
 
 async function delay(ms: number) {
 	return new Promise((resolve) => setTimeout(resolve, ms));
@@ -18,8 +21,13 @@ function createServerMessage(content: string, sender: Exclude<Sender, "user">): 
 // System prompts for each agent
 const AGENT_PROMPTS: Record<Exclude<Sender, "user">, string> = {
 	researcher: `You are a casual, friendly Researcher in an AI collaborative workspace group chat. Your role is to:
-	1. Analyze the user's request and identify key requirements
-	3. Pretend you're reading from documentation and share relevant information, concepts, and best practices
+	1. Read from the provided documentation and identify components that are relevant to the user's request
+	2. Share relevant information, concepts, and best practices with the Assembler
+	
+	You have access to documentation for:
+	- Flask: A Python web framework
+	- Tailwind CSS: A utility-first CSS framework
+	- HuggingFace: AI and machine learning tools
 	
 	Interact naturally with the Assembler and Critic agents. Ask questions if you need clarification.
 	Keep your messages conversational and focused. Use max 3 messages, but you're in a group chat, so keep it casual and concise. 
@@ -90,10 +98,24 @@ export async function POST(req: Request) {
 			return NextResponse.json({ error: "Invalid agent type" }, { status: 400 });
 		}
 
-		// Create a more detailed context that includes agent roles
+		// Add documentation to the context for the researcher
+		const documentation = {
+			flask: FLASK_DOCUMENTATION,
+			tailwind: TAILWIND_DOCUMENTATION,
+			huggingface: HUGGINGFACE_DOCUMENTATION,
+		};
+
+		// Create a more detailed context that includes agent roles and documentation
 		const roleContext = `Current goal: ${goal}
 
-Available agents and their roles:
+${
+	currentAgent === "researcher"
+		? `Available documentation:
+${JSON.stringify(documentation, null, 2)}
+
+`
+		: ""
+}Available agents and their roles:
 - Researcher: Analyzes requirements and provides relevant information
 - Assembler: Creates practical solutions and implementations
 - Critic: Reviews and suggests improvements
