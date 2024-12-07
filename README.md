@@ -19,3 +19,6 @@ Open [http://localhost:3000](http://localhost:3000) with your browser to see the
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+
+## Notes
+For the scale of the project, we didn't get the chance to build a browser agent or web scraper to actually pull data from documentation online, so we stored local data for Flask, Tailwind, and Hugging Face documentation that the researcher agent has access to. In the future, there would be a more dynamic way for the researcher agent to access and read documentation.
